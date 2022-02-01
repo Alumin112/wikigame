@@ -1,10 +1,10 @@
-use std::{borrow::Cow, thread, sync::{mpsc, Mutex, Arc}};
+use std::borrow::Cow;
 use wikipedia::{http::default::Client, Wikipedia};
 
 use super::history::History;
 
 use eframe::egui::{
-    menu, Align, Button, Color32, CtxRef, FontDefinitions, FontFamily, Label, Layout, Separator,
+    menu, Button, Color32, CtxRef, FontDefinitions, FontFamily, Label, Layout, Separator,
     Slider, TextStyle, TopBottomPanel, Ui,
 };
 
@@ -22,7 +22,6 @@ pub struct Game {
     pub dark_mode: bool,
     start_time: Option<f64>,
     pause: bool,
-    content: Option<String>,
     links: Option<Vec<String>>,
     wiki: Wikipedia<Client>
 }
@@ -36,7 +35,6 @@ impl Game {
             game_started: false,
             dark_mode: true,
             start_time: None,
-            content: None,
             pause: false,
             links: None,
             wiki: Wikipedia::default()
@@ -182,11 +180,6 @@ impl Game {
         ui.add_space(PADDING);
 
         ui.with_layout(Layout::left_to_right(), |ui| {
-            ui.colored_label(
-                if self.dark_mode { WHITE } else { BLACK },
-                self.content.as_ref().unwrap(),
-            );
-
             for link in self.links.as_ref().unwrap().clone() {
                 if ui
                     .add(
@@ -230,14 +223,9 @@ impl Game {
     pub fn goto_link(&mut self, link: &str) {
         self.urls.new_next(link);
         let link = link.to_owned();
-        let stuff = Arc::new(Mutex::new(self));
-        let handle = thread::spawn(move || {
-            let mut s = stuff.lock().unwrap();
-            let page = s.wiki.page_from_title(link);
-            s.content = Some(page.get_content().unwrap());
-            s.links = Some(page.get_links().unwrap().map(|l| l.title).collect());
-            println!("Fetched page");
-        });
+        let page = self.wiki.page_from_title(link);
+        self.links = Some(page.get_links().unwrap().map(|l| l.title).collect());
+        println!("Fetched page");
     }
 
     pub fn get_random_link() -> &'static str {
